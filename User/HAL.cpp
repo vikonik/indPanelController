@@ -1,6 +1,9 @@
 #include "HAL.h"
 UART *uartPanel;
 ADC *adc;
+DELAY *pause;
+TIMER *beepTimer;
+
 PanelProtocol_t panelProtocol;
 PortMapIO *adcInput_0; 
 PortMapIO *adcInput_1; 
@@ -11,6 +14,14 @@ PortMapIO *adcInput_3;
 PortMapIO *s_0; 
 PortMapIO *s_1; 
 PortMapIO *s_2; 
+
+//Пищалка
+PortMapIO *buzer;
+uint16_t adcData = 0;
+uint8_t triggerON_OFF = 0;//Триггер включеиня выключения
+uint8_t beepEnable = 0;
+
+
 /**/
 void initUart(void){
   PortMapIO rx(PORT_UART_1,
@@ -82,9 +93,10 @@ adcInput_3->setPinAsAnalog();
 
 adc = new ADC();
 adc->init();
+adc->switchToSinglConversion();
 adc->setChannel(ADC_Canel_0);
-adc->IRQ_ON();
-adc->Start();
+//adc->IRQ_ON();
+//adc->Start();
 }
 
 /**/
@@ -100,7 +112,7 @@ void initSensor(){
 /*
 Выбор сенсота для чтеия
 */
-void selectSensir(uint8_t sensor){
+void selectSensor(uint8_t sensor){
   switch(sensor){
     case 0:s_2->setLow(); s_1->setLow();s_0->setLow(); 
     break;
@@ -120,4 +132,63 @@ void selectSensir(uint8_t sensor){
     break;
     default : break;
   }
+}
+
+/*
+Сенсор включения
+*/
+void checkSensorON(){
+uint16_t tmp = 0;
+adc->Stop();
+adc->setChannel(ADC_Canel_3);
+
+for(int i = 0; i < 5; i++){
+adc->Start();
+  while(ADC1_GetFlagStatus(ADCx_IT_END_OF_CONVERSION) != SET){}
+  adc->readData();
+}
+adc->Start();
+  while(ADC1_GetFlagStatus(ADCx_IT_END_OF_CONVERSION) != SET){}
+  tmp = adc->readData();
+
+if(tmp > (POROG_ON_OFF)){
+
+if(triggerON_OFF) 
+  triggerON_OFF = 0;
+else 
+  triggerON_OFF = 1;
+
+beep();
+while(tmp > (POROG_ON_OFF)){
+  adc->Start();
+  while(ADC1_GetFlagStatus(ADCx_IT_END_OF_CONVERSION) != SET){}
+  tmp = adc->readData();
+}
+pause->delay_ms(250);
+
+}
+}
+
+/*
+Выключение индикаторов
+*/
+void indicatorOFF(){
+
+}
+
+/**/
+void buzerInit(){
+buzer = new PortMapIO (BUZER_PORT,BUZER_PIN);
+  beepTimer = new TIMER(MDR_TIMER1, 500);
+}
+/**/
+void beep(){
+//  for(int i = 0; i < 50; i++){
+//    buzer->setHigh();
+//    pause->delay_ms(1);
+//    buzer->setLow();
+//    pause->delay_ms(1);
+//  }
+
+beepEnable = 1;
 }

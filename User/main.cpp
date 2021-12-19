@@ -4,7 +4,7 @@
 
 uint8_t p = 1;
 volatile uint16_t CRC = 0;
-
+volatile uint16_t tmpAdc = 0;
 
 int main(void){
 panelProtocol.b0 = 0x02;
@@ -17,17 +17,19 @@ panelProtocol.k4 = 0x10;
 
 CRC = calckCRC((uint8_t*)&panelProtocol, sizeof(PanelProtocol_t));
 RCC rcc(128);//Кварц 8МГц, поэтому максимально 128
-DELAY pause;
+pause = new DELAY;
 initUart();
 initADC();
+buzerInit();
 adc->setChannel(ADC_Canel_0);
 initSensor();
-selectSensir(7);
+selectSensor(0);
 
 uartPanel->sendByte(0x55);
 uartPanel->sendByte(0x56);
 uartPanel->sendByte(0x57);
-//PortMapIO buzer(BUZER_PORT,BUZER_PIN);
+
+
 
 
 PortMapIO sA(LED_DIGIT_PORT, SEG_A);
@@ -65,7 +67,7 @@ digit[7].addCatode(&C_8);
 digit[8].addCatode(&C_9);
 digit[9].addCatode(&C_10);
 
-LED_DIGIT ind(&ledCode, digit,9);
+LED_DIGIT ind(&ledCode, digit,7);
 
 for(int i = 0; i < 10; i++){
 
@@ -74,7 +76,7 @@ for(int i = 0; i < 10; i++){
 }
 
 
-digit[8].setLow();
+digit[8].setHi();
 
 digit[0].setLow();
 digit[1].setLow();
@@ -87,24 +89,43 @@ digit[5].setLow();
 
 
 
-
-
+beep();
+triggerON_OFF = 0;
 while(1){
-
+checkSensorON();
+if(triggerON_OFF){
 ind.showDigit(0,(0<<5)|0);
-pause.delay_ms(p);
+pause->delay_ms(p);
 ind.showDigit(1,(0<<5)|5);
-pause.delay_ms(p);
+pause->delay_ms(p);
 ind.showDigit(2,(0<<5)|2);
-pause.delay_ms(p);
+
+
+
+
+selectSensor(0);
+adc->setChannel(ADC_Canel_0);
+adc->Start();
+  while(ADC1_GetFlagStatus(ADCx_IT_END_OF_CONVERSION) != SET){}
+  tmpAdc = adc->readData();
+  adc->Start();
+  while(ADC1_GetFlagStatus(ADCx_IT_END_OF_CONVERSION) != SET){}
+  tmpAdc = adc->readData();
+
+if(tmpAdc > 4095/3)
+beep();
+
+
+
+pause->delay_ms(p);
 ind.showDigit(3,(0<<5)|3);
-pause.delay_ms(p);
+pause->delay_ms(p);
 ind.showDigit(4,(0<<5)|4);
-pause.delay_ms(p);
+pause->delay_ms(p);
 ind.showDigit(5,5);
-pause.delay_ms(p);
-ind.showDigit(6,0x86);
-pause.delay_ms(p);
+pause->delay_ms(p);
+ind.showDigit(6,VOLUME|0x06);
+pause->delay_ms(p);
 
 
 
@@ -113,6 +134,24 @@ pause.delay_ms(p);
 //ind.showDigit(0,7);
 //ind.showDigit(0,8);
 //ind.showDigit(0,9);
+}
+else{
+digit[0].setHi();
+digit[1].setHi();
+digit[2].setHi();
+digit[3].setHi();
+digit[4].setHi();
+digit[5].setHi();
+digit[6].setHi();
+
+
+
+while(!triggerON_OFF){
+  checkSensorON();
+//pause->delay_ms(250);
+}
+}
+
 }
 
 
