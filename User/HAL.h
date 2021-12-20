@@ -34,12 +34,18 @@ extern UART *uartPanel;
 extern ADC  *adc;
 extern DELAY *pause;
 extern TIMER *beepTimer;
-
+extern TIMER *ledTimer;
+extern LED_DIGIT *ind;
 
 extern uint32_t tickDelay;
 extern uint16_t adcData;
 extern uint8_t triggerON_OFF;//Триггер включеиня выключения
 extern uint8_t beepEnable;//пищим в прерывании
+extern uint8_t ledCounter; 
+extern uint8_t sensorCounter;
+extern uint8_t heatVolume[];
+extern uint16_t ticPauseSendCMD;
+
 extern PortMapIO *adcInput_0; 
 extern PortMapIO *adcInput_1; 
 extern PortMapIO *adcInput_2; 
@@ -66,3 +72,6 @@ void selectSensor(uint8_t sensor);
 void checkSensorON();//Проверка сенсора включеинч/выключеия
 void buzerInit();
 void beep();
+uint8_t readSensor(uint8_t sensorNumber);
+void ledTimerInit();
+void setHeat(void);

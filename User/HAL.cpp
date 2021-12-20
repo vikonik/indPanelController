@@ -3,6 +3,8 @@ UART *uartPanel;
 ADC *adc;
 DELAY *pause;
 TIMER *beepTimer;
+TIMER *ledTimer;
+LED_DIGIT *ind;
 
 PanelProtocol_t panelProtocol;
 PortMapIO *adcInput_0; 
@@ -21,7 +23,10 @@ uint16_t adcData = 0;
 uint8_t triggerON_OFF = 0;//Триггер включеиня выключения
 uint8_t beepEnable = 0;
 
-
+uint8_t ledCounter = 0;//Счетчик для переключеиня индикаторов и сенсоров
+uint8_t sensorCounter = 0;
+uint8_t heatVolume[10];//Мощность нагрева
+uint16_t ticPauseSendCMD = 0;//Команды в силовую часть надо слать с интервалом 500мс
 /**/
 void initUart(void){
   PortMapIO rx(PORT_UART_1,
@@ -192,3 +197,74 @@ void beep(){
 
 beepEnable = 1;
 }
+
+/*
+Детектор сенсора для канфорки
+*/
+volatile uint16_t tmpAdc = 0;
+uint8_t readSensor(uint8_t sensorNumber){
+uint16_t porog = 0;
+
+selectSensor(7);
+adc->setChannel(ADC_Canel_0);
+adc->Start();
+  while(ADC1_GetFlagStatus(ADCx_IT_END_OF_CONVERSION) != SET){}
+  porog = adc->readData();
+  adc->Start();
+  while(ADC1_GetFlagStatus(ADCx_IT_END_OF_CONVERSION) != SET){}
+  porog = adc->readData();
+
+selectSensor(sensorNumber);
+adc->setChannel(ADC_Canel_0);
+adc->Start();
+  while(ADC1_GetFlagStatus(ADCx_IT_END_OF_CONVERSION) != SET){}
+  tmpAdc = adc->readData();
+  adc->Start();
+  while(ADC1_GetFlagStatus(ADCx_IT_END_OF_CONVERSION) != SET){}
+  tmpAdc = adc->readData();
+
+
+//if(sensorNumber == 1)
+//sensorNumber = 1;
+
+//  if(tmpAdc > (4096-porog)){
+//    beep();
+//    adc->Start();
+//    while(ADC1_GetFlagStatus(ADCx_IT_END_OF_CONVERSION) != SET){}
+//      tmpAdc = adc->readData();
+//    while(tmpAdc > (4096-porog)){
+//      adc->Start();
+//      while(ADC1_GetFlagStatus(ADCx_IT_END_OF_CONVERSION) != SET){}
+//      tmpAdc = adc->readData();
+//    }
+//  }
+
+  if(tmpAdc > (4096-porog)){
+    return 1;
+  }
+return 0;
+}
+
+/*
+Инициализация таймера для переключения индикаторов
+*/
+void ledTimerInit(){
+ledTimer - new  TIMER(MDR_TIMER2, 1000);
+}
+
+/**/
+void setHeat(void){
+
+uint16_t crc = calckCRC((uint8_t*)&panelProtocol, sizeof(PanelProtocol_t));
+uartPanel->sendByte(panelProtocol.b0);
+uartPanel->sendByte(panelProtocol.b1);
+uartPanel->sendByte(panelProtocol.b2);
+uartPanel->sendByte(panelProtocol.k1);
+uartPanel->sendByte(panelProtocol.k2);
+uartPanel->sendByte(panelProtocol.k3);
+uartPanel->sendByte(panelProtocol.k4);
+uartPanel->sendByte((crc >> 8));
+uartPanel->sendByte((crc & 0xFF));
+
+}
+

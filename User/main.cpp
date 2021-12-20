@@ -1,17 +1,19 @@
 #include "HAL.h"
 
-
+//02 00 FF 10 30 30 10 F3 EA  
 
 uint8_t p = 1;
 volatile uint16_t CRC = 0;
-volatile uint16_t tmpAdc = 0;
+uint8_t ledCounterTmp = 0;
+
+uint8_t sensorStatus[10];
 
 int main(void){
 panelProtocol.b0 = 0x02;
 panelProtocol.b1 = 00;
 panelProtocol.b2 = 0xFF;
 panelProtocol.k1 = 0x10;
-panelProtocol.k2 = 0x31;
+panelProtocol.k2 = 0x30;
 panelProtocol.k3 = 0x30;
 panelProtocol.k4 = 0x10;
 
@@ -24,6 +26,7 @@ buzerInit();
 adc->setChannel(ADC_Canel_0);
 initSensor();
 selectSensor(0);
+ledTimerInit();
 
 uartPanel->sendByte(0x55);
 uartPanel->sendByte(0x56);
@@ -67,12 +70,12 @@ digit[7].addCatode(&C_8);
 digit[8].addCatode(&C_9);
 digit[9].addCatode(&C_10);
 
-LED_DIGIT ind(&ledCode, digit,7);
-
+//LED_DIGIT ind(&ledCode, digit,7);
+ind = new LED_DIGIT(&ledCode, digit,6);
 for(int i = 0; i < 10; i++){
 
 //ind.ledCode->setCode(2);
-(&ind.catode[i])->catodeOff();
+ind->catode[i].catodeOff();
 }
 
 
@@ -94,42 +97,28 @@ triggerON_OFF = 0;
 while(1){
 checkSensorON();
 if(triggerON_OFF){
-ind.showDigit(0,(0<<5)|0);
-pause->delay_ms(p);
-ind.showDigit(1,(0<<5)|5);
-pause->delay_ms(p);
-ind.showDigit(2,(0<<5)|2);
 
+if(sensorCounter == 0 | sensorCounter == 1 | sensorCounter == 3 | sensorCounter == 4  ){//Попытка убрать задержку
+ledCounterTmp = sensorCounter;
+if(readSensor(sensorCounter)){
+  if(sensorStatus[sensorCounter] < 31)
+    sensorStatus[sensorCounter]++;
+}
+else sensorStatus[sensorCounter] = 0;
 
+if(sensorStatus[sensorCounter] == 30){
+  beep();
+heatVolume[sensorCounter]++;
+heatVolume[sensorCounter] %= 10;
+}
 
-
-selectSensor(0);
-adc->setChannel(ADC_Canel_0);
-adc->Start();
-  while(ADC1_GetFlagStatus(ADCx_IT_END_OF_CONVERSION) != SET){}
-  tmpAdc = adc->readData();
-  adc->Start();
-  while(ADC1_GetFlagStatus(ADCx_IT_END_OF_CONVERSION) != SET){}
-  tmpAdc = adc->readData();
-
-if(tmpAdc > 4095/3)
-beep();
-
-
-
-pause->delay_ms(p);
-ind.showDigit(3,(0<<5)|3);
-pause->delay_ms(p);
-ind.showDigit(4,(0<<5)|4);
-pause->delay_ms(p);
-ind.showDigit(5,5);
-pause->delay_ms(p);
-ind.showDigit(6,VOLUME|0x06);
-pause->delay_ms(p);
-
-
-
-
+  while(ledCounterTmp == sensorCounter);
+}
+panelProtocol.k1 = 0x10|heatVolume[0];
+panelProtocol.k2 = 0x30|heatVolume[1];
+panelProtocol.k3 = 0x30|heatVolume[3];
+panelProtocol.k4 = 0x10|heatVolume[4];
+if(!(ticPauseSendCMD % 300))setHeat();
 //ind.showDigit(0,6);
 //ind.showDigit(0,7);
 //ind.showDigit(0,8);
@@ -144,7 +133,16 @@ digit[4].setHi();
 digit[5].setHi();
 digit[6].setHi();
 
+for(int i = 0; i < 10; i++){
+  heatVolume[i] = 0;
+}
 
+panelProtocol.k1 = 0x10;
+panelProtocol.k2 = 0x30;
+panelProtocol.k3 = 0x30;
+panelProtocol.k4 = 0x10;
+for(int i = 0; i < 20; )
+  if(!(ticPauseSendCMD % 500)){i++;setHeat();}
 
 while(!triggerON_OFF){
   checkSensorON();
