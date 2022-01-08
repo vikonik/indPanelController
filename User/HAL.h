@@ -27,24 +27,30 @@
 #define ADC_Canel_3 7
  
 #define VOLUME 0x80//Маркер для отображения уровня нагрузки
+#define TRIGGER_SENSOR_LOCK (1<<5)
 
-#define POROG_ON_OFF 4095/2
+
+#define POROG_ON_OFF 0x03C0
+
 
 extern UART *uartPanel;
 extern ADC  *adc;
 extern DELAY *pause;
 extern TIMER *beepTimer;
 extern TIMER *ledTimer;
+extern TIMER *delayMessure;
 extern LED_DIGIT *ind;
 
 extern uint32_t tickDelay;
 extern uint16_t adcData;
 extern uint8_t triggerON_OFF;//Триггер включеиня выключения
+extern uint8_t triggerSensorLoc ;
 extern uint8_t beepEnable;//пищим в прерывании
 extern uint8_t ledCounter; 
 extern uint8_t sensorCounter;
 extern uint8_t heatVolume[];
 extern uint16_t ticPauseSendCMD;
+extern uint8_t triggerMessureTimer;
 
 extern PortMapIO *adcInput_0; 
 extern PortMapIO *adcInput_1; 
@@ -75,3 +81,7 @@ void beep();
 uint8_t readSensor(uint8_t sensorNumber);
 void ledTimerInit();
 void setHeat(void);
+uint8_t checkSensorLock(void);
+void delayMessureTimerInit();
+
+

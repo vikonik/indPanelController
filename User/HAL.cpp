@@ -4,6 +4,7 @@ ADC *adc;
 DELAY *pause;
 TIMER *beepTimer;
 TIMER *ledTimer;
+TIMER *delayMessure;
 LED_DIGIT *ind;
 
 PanelProtocol_t panelProtocol;
@@ -21,8 +22,10 @@ PortMapIO *s_2;
 PortMapIO *buzer;
 uint16_t adcData = 0;
 uint8_t triggerON_OFF = 0;//Триггер включеиня выключения
+uint8_t triggerSensorLoc = 0;
 uint8_t beepEnable = 0;
 
+uint8_t triggerMessureTimer = 0;//для измерения отступа для начала измерения сенсора
 uint8_t ledCounter = 0;//Счетчик для переключеиня индикаторов и сенсоров
 uint8_t sensorCounter = 0;
 uint8_t heatVolume[10];//Мощность нагрева
@@ -53,7 +56,7 @@ void initUart(void){
     PORT_SPEED_MAXFAST,
     PORT_MODE_DIGITAL);
 //RST_CLK_PCLKcmd(RST_CLK_PCLK_UART1, ENABLE);
-   uartPanel = new UART(MDR_UART1, 115200, UART_WordLength8b, UART_StopBits1, UART_Parity_No,UART_FIFO_OFF, UART_HardwareFlowControl_RXE | UART_HardwareFlowControl_TXE);
+   uartPanel = new UART(MDR_UART1, 9600, UART_WordLength8b, UART_StopBits1, UART_Parity_No,UART_FIFO_OFF, UART_HardwareFlowControl_RXE | UART_HardwareFlowControl_TXE);
   uartPanel->enableIRQ();
 }
 
@@ -216,6 +219,93 @@ adc->Start();
 
 selectSensor(sensorNumber);
 adc->setChannel(ADC_Canel_0);
+//delayMessure->timerStop();
+//triggerMessureTimer = 0;
+//delayMessure->timerStart();
+//while(triggerMessureTimer == 0){}
+
+adc->Start();
+  while(ADC1_GetFlagStatus(ADCx_IT_END_OF_CONVERSION) != SET){}
+  tmpAdc = adc->readData();
+  adc->Start();
+  while(ADC1_GetFlagStatus(ADCx_IT_END_OF_CONVERSION) != SET){}
+  tmpAdc = adc->readData();
+
+
+//if(sensorNumber == 1)
+//sensorNumber = 1;
+
+//  if(tmpAdc > (4096-porog)){
+//    beep();
+//    adc->Start();
+//    while(ADC1_GetFlagStatus(ADCx_IT_END_OF_CONVERSION) != SET){}
+//      tmpAdc = adc->readData();
+//    while(tmpAdc > (4096-porog)){
+//      adc->Start();
+//      while(ADC1_GetFlagStatus(ADCx_IT_END_OF_CONVERSION) != SET){}
+//      tmpAdc = adc->readData();
+//    }
+//  }
+
+
+if(sensorNumber == 4){//Костыль для 4-го сенсора
+  if(tmpAdc > 0x0D00){//(4096-porog)
+    return 1;
+  }
+
+  return 0;
+}
+
+  if(tmpAdc > 0x0B00){//(4096-porog)
+    return 1;
+  }
+
+return 0;
+}
+
+/*
+Инициализация таймера для переключения индикаторов
+*/
+void ledTimerInit(){
+ledTimer = new  TIMER(MDR_TIMER2, 1000);
+}
+/**/
+void delayMessureTimerInit(){
+delayMessure = new  TIMER(MDR_TIMER3, 100);
+}
+/**/
+void setHeat(void){
+
+uint16_t crc = calckCRC((uint8_t*)&panelProtocol, sizeof(PanelProtocol_t));
+uartPanel->sendByte(panelProtocol.b0);
+uartPanel->sendByte(panelProtocol.b1);
+uartPanel->sendByte(panelProtocol.b2);
+uartPanel->sendByte(panelProtocol.k1);
+uartPanel->sendByte(panelProtocol.k2);
+uartPanel->sendByte(panelProtocol.k3);
+uartPanel->sendByte(panelProtocol.k4);
+uartPanel->sendByte((crc >> 8));
+uartPanel->sendByte((crc & 0xFF));
+
+}
+
+/*
+
+*/
+uint8_t checkSensorLock(void){
+uint16_t porog = 0;
+
+selectSensor(7);
+adc->setChannel(ADC_Canel_0);
+adc->Start();
+  while(ADC1_GetFlagStatus(ADCx_IT_END_OF_CONVERSION) != SET){}
+  porog = adc->readData();
+  adc->Start();
+  while(ADC1_GetFlagStatus(ADCx_IT_END_OF_CONVERSION) != SET){}
+  porog = adc->readData();
+
+selectSensor(2);
+adc->setChannel(ADC_Canel_1);
 adc->Start();
   while(ADC1_GetFlagStatus(ADCx_IT_END_OF_CONVERSION) != SET){}
   tmpAdc = adc->readData();
@@ -245,26 +335,6 @@ adc->Start();
 return 0;
 }
 
-/*
-Инициализация таймера для переключения индикаторов
-*/
-void ledTimerInit(){
-ledTimer - new  TIMER(MDR_TIMER2, 1000);
-}
 
-/**/
-void setHeat(void){
 
-uint16_t crc = calckCRC((uint8_t*)&panelProtocol, sizeof(PanelProtocol_t));
-uartPanel->sendByte(panelProtocol.b0);
-uartPanel->sendByte(panelProtocol.b1);
-uartPanel->sendByte(panelProtocol.b2);
-uartPanel->sendByte(panelProtocol.k1);
-uartPanel->sendByte(panelProtocol.k2);
-uartPanel->sendByte(panelProtocol.k3);
-uartPanel->sendByte(panelProtocol.k4);
-uartPanel->sendByte((crc >> 8));
-uartPanel->sendByte((crc & 0xFF));
-
-}
 

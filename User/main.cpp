@@ -8,10 +8,11 @@ uint8_t ledCounterTmp = 0;
 
 uint8_t sensorStatus[10];
 
+
 int main(void){
 panelProtocol.b0 = 0x02;
 panelProtocol.b1 = 00;
-panelProtocol.b2 = 0xFF;
+panelProtocol.b2 = 0xFE;
 panelProtocol.k1 = 0x10;
 panelProtocol.k2 = 0x30;
 panelProtocol.k3 = 0x30;
@@ -27,12 +28,12 @@ adc->setChannel(ADC_Canel_0);
 initSensor();
 selectSensor(0);
 ledTimerInit();
-
+//delayMessureTimerInit();
 uartPanel->sendByte(0x55);
 uartPanel->sendByte(0x56);
 uartPanel->sendByte(0x57);
 
-
+delayMessure->timerStop();
 
 
 PortMapIO sA(LED_DIGIT_PORT, SEG_A);
@@ -90,15 +91,23 @@ digit[5].setLow();
 
 
 
-
+setHeat();
+setHeat();
+setHeat();
 
 beep();
-triggerON_OFF = 0;
+triggerON_OFF = 1;
+ind->catode[7].catodeOn();
 while(1){
 checkSensorON();
 if(triggerON_OFF){
 
+
+
+
+
 if(sensorCounter == 0 | sensorCounter == 1 | sensorCounter == 3 | sensorCounter == 4  ){//Попытка убрать задержку
+adc->setChannel(ADC_Canel_0);
 ledCounterTmp = sensorCounter;
 if(readSensor(sensorCounter)){
   if(sensorStatus[sensorCounter] < 31)
@@ -108,16 +117,40 @@ else sensorStatus[sensorCounter] = 0;
 
 if(sensorStatus[sensorCounter] == 30){
   beep();
+if(!triggerSensorLoc){
 heatVolume[sensorCounter]++;
 heatVolume[sensorCounter] %= 10;
+}
 }
 
   while(ledCounterTmp == sensorCounter);
 }
-panelProtocol.k1 = 0x10|heatVolume[0];
-panelProtocol.k2 = 0x30|heatVolume[1];
-panelProtocol.k3 = 0x30|heatVolume[3];
-panelProtocol.k4 = 0x10|heatVolume[4];
+
+//else{
+
+
+//if(checkSensorLock()){
+//  if(sensorStatus[2] < 31)
+//    sensorStatus[2]++;
+//}
+//else sensorStatus[2] = 0;
+
+//if(sensorStatus[2] == 30){
+//  beep();
+////heatVolume[2]++;
+////heatVolume[2] %= 10;
+//if(triggerSensorLoc)
+//triggerSensorLoc = 0;
+//else 
+//triggerSensorLoc = 1;
+//}
+
+
+//}
+panelProtocol.k3 = 0x10|heatVolume[0];
+panelProtocol.k4 = 0x30|heatVolume[1];
+panelProtocol.k2 = 0x30|heatVolume[3];
+panelProtocol.k1 = 0x10|heatVolume[4];
 if(!(ticPauseSendCMD % 300))setHeat();
 //ind.showDigit(0,6);
 //ind.showDigit(0,7);
@@ -169,32 +202,44 @@ while(1){
 //pause.delay_ms(10);
 //buzer.setLow();
 //pause.delay_ms(10);
-//sA.setHigh();
-//sB.setHigh();
-//sC.setHigh();
-//sD.setHigh();
-//sE.setHigh();
-//sF.setHigh();
-//sG.setHigh();
-//sH.setHigh();
-//sI.setHigh();
-//sJ.setHigh();
+sA.setHigh();
+sB.setHigh();
+sC.setHigh();
+sD.setHigh();
+sE.setHigh();
+sF.setHigh();
+sG.setHigh();
+sH.setHigh();
+sI.setHigh();
+sJ.setHigh();
 
 
-//C_1.setLow();
-//pause.delay_ms(200);
-//C_1.setHigh();
-//pause.delay_ms(200);
+//for(int i = 0; i<10; i++){
+//digit[i].catodeOn();
+//}
 
-//C_2.setLow();
-//pause.delay_ms(200);
-//C_2.setHigh();
-//pause.delay_ms(200);
+//for(int i = 0; i<10; i++){
+//digit[i].catodeOff();
+//}
 
-//C_3.setLow();
-//pause.delay_ms(200);
-//C_3.setHigh();
-//pause.delay_ms(200);
+
+
+
+
+
+pause->delay_ms(500);
+C_1.setHigh();
+pause->delay_ms(500);
+
+C_2.setLow();
+pause->delay_ms(500);
+C_2.setHigh();
+pause->delay_ms(500);
+
+C_3.setLow();
+pause->delay_ms(500);
+C_3.setHigh();
+pause->delay_ms(500);
 
 
 
