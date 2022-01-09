@@ -27,7 +27,7 @@ buzerInit();
 adc->setChannel(ADC_Canel_0);
 initSensor();
 selectSensor(0);
-ledTimerInit();
+//ledTimerInit();
 //delayMessureTimerInit();
 uartPanel->sendByte(0x55);
 uartPanel->sendByte(0x56);
@@ -96,15 +96,16 @@ setHeat();
 setHeat();
 
 beep();
-triggerON_OFF = 1;
+triggerON_OFF = 0;
 ind->catode[7].catodeOn();
+
+
+sensorCalib();
+ledTimerInit();
+
 while(1){
 checkSensorON();
 if(triggerON_OFF){
-
-
-
-
 
 if(sensorCounter == 0 | sensorCounter == 1 | sensorCounter == 3 | sensorCounter == 4  ){//Попытка убрать задержку
 adc->setChannel(ADC_Canel_0);
@@ -113,14 +114,15 @@ if(readSensor(sensorCounter)){
   if(sensorStatus[sensorCounter] < 31)
     sensorStatus[sensorCounter]++;
 }
-else sensorStatus[sensorCounter] = 0;
+else 
+  sensorStatus[sensorCounter] = 0;
 
 if(sensorStatus[sensorCounter] == 30){
   beep();
-if(!triggerSensorLoc){
-heatVolume[sensorCounter]++;
-heatVolume[sensorCounter] %= 10;
-}
+  if(!triggerSensorLoc){
+    heatVolume[sensorCounter]++;
+    heatVolume[sensorCounter] %= 10;
+  }
 }
 
   while(ledCounterTmp == sensorCounter);

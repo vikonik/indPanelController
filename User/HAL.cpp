@@ -30,6 +30,11 @@ uint8_t ledCounter = 0;//Счетчик для переключеиня инди
 uint8_t sensorCounter = 0;
 uint8_t heatVolume[10];//Мощность нагрева
 uint16_t ticPauseSendCMD = 0;//Команды в силовую часть надо слать с интервалом 500мс
+
+uint16_t calibrationData[9];//Калибровка сенсоров для определения порога срабатывания
+uint16_t calibrationOnOff = 0;
+
+
 /**/
 void initUart(void){
   PortMapIO rx(PORT_UART_1,
@@ -144,8 +149,10 @@ void selectSensor(uint8_t sensor){
 
 /*
 Сенсор включения
+реагирует на свет, будем калхозить...
 */
 void checkSensorON(){
+uint16_t array[8];
 uint16_t tmp = 0;
 adc->Stop();
 adc->setChannel(ADC_Canel_3);
@@ -155,9 +162,24 @@ adc->Start();
   while(ADC1_GetFlagStatus(ADCx_IT_END_OF_CONVERSION) != SET){}
   adc->readData();
 }
-adc->Start();
+
+//Заполняем массив для фильтра
+for(int i = 0; i < 8; i++){
+  adc->Start();
   while(ADC1_GetFlagStatus(ADCx_IT_END_OF_CONVERSION) != SET){}
-  tmp = adc->readData();
+  array[i] = adc->readData();
+}
+
+
+
+for(int i = 0; i < 8; i++){
+
+  if(array[i] > POROG_ON_OFF)tmp = array[i];
+  else{
+    tmp = 0;
+    break;
+  }
+}
 
 if(tmp > (POROG_ON_OFF)){
 
@@ -208,14 +230,14 @@ volatile uint16_t tmpAdc = 0;
 uint8_t readSensor(uint8_t sensorNumber){
 uint16_t porog = 0;
 
-selectSensor(7);
-adc->setChannel(ADC_Canel_0);
-adc->Start();
-  while(ADC1_GetFlagStatus(ADCx_IT_END_OF_CONVERSION) != SET){}
-  porog = adc->readData();
-  adc->Start();
-  while(ADC1_GetFlagStatus(ADCx_IT_END_OF_CONVERSION) != SET){}
-  porog = adc->readData();
+//selectSensor(7);
+//adc->setChannel(ADC_Canel_0);
+//adc->Start();
+//  while(ADC1_GetFlagStatus(ADCx_IT_END_OF_CONVERSION) != SET){}
+//  porog = adc->readData();
+//  adc->Start();
+//  while(ADC1_GetFlagStatus(ADCx_IT_END_OF_CONVERSION) != SET){}
+//  porog = adc->readData();
 
 selectSensor(sensorNumber);
 adc->setChannel(ADC_Canel_0);
@@ -224,13 +246,15 @@ adc->setChannel(ADC_Canel_0);
 //delayMessure->timerStart();
 //while(triggerMessureTimer == 0){}
 
-adc->Start();
-  while(ADC1_GetFlagStatus(ADCx_IT_END_OF_CONVERSION) != SET){}
-  tmpAdc = adc->readData();
+for(int i = 0; i < 10; i++){
   adc->Start();
   while(ADC1_GetFlagStatus(ADCx_IT_END_OF_CONVERSION) != SET){}
   tmpAdc = adc->readData();
+}
 
+  adc->Start();
+  while(ADC1_GetFlagStatus(ADCx_IT_END_OF_CONVERSION) != SET){}
+  tmpAdc = adc->readData();
 
 //if(sensorNumber == 1)
 //sensorNumber = 1;
@@ -247,16 +271,8 @@ adc->Start();
 //    }
 //  }
 
-
-if(sensorNumber == 4){//Костыль для 4-го сенсора
-  if(tmpAdc > 0x0D00){//(4096-porog)
-    return 1;
-  }
-
-  return 0;
-}
-
-  if(tmpAdc > 0x0B00){//(4096-porog)
+porog = (calibrationData[sensorNumber] + (calibrationData[sensorNumber] / 4));
+  if(tmpAdc > porog){//(4096-porog)
     return 1;
   }
 
@@ -335,6 +351,53 @@ adc->Start();
 return 0;
 }
 
+/*
+чтение калибровочных данных
+*/
+uint16_t readCalibration(uint8_t sensorNumber){
+uint16_t porog = 0;
+selectSensor(sensorNumber);//Установили канал мультиплексора
+adc->setChannel(ADC_Canel_0);
+pause->delay_ms(1);
+  
+  adc->Start();
+  while(ADC1_GetFlagStatus(ADCx_IT_END_OF_CONVERSION) != SET){}
+  porog = adc->readData();
+  adc->Start();
+  while(ADC1_GetFlagStatus(ADCx_IT_END_OF_CONVERSION) != SET){}
+  porog += adc->readData();
+porog /= 2;
+return  porog;
+}
 
+/*
+Калибровка сенсоров
+*/
+void sensorCalib(void){
+for(int i = 0; i< 9; i++){
+calibrationData[i] = 0;
+}
 
+adc->setChannel(ADC_Canel_3);
+pause->delay_ms(1);
+  adc->Start();
+  while(ADC1_GetFlagStatus(ADCx_IT_END_OF_CONVERSION) != SET){}
+  calibrationOnOff = adc->readData();
+  adc->Start();
+  while(ADC1_GetFlagStatus(ADCx_IT_END_OF_CONVERSION) != SET){}
+  calibrationOnOff = adc->readData();
+
+ind->showDigit(2,(0<<5)|heatVolume[0]); sensorCounter = 0;
+calibrationData[sensorCounter]  = readCalibration( sensorCounter);
+
+ind->showDigit(3,(0<<5)|heatVolume[1]); sensorCounter = 1;
+calibrationData[sensorCounter]  = readCalibration( sensorCounter);
+
+ind->showDigit(4,0|heatVolume[3]); sensorCounter = 3;
+calibrationData[sensorCounter]  = readCalibration( sensorCounter);
+
+ind->showDigit(5,heatVolume[4]); sensorCounter = 4;
+calibrationData[sensorCounter]  = readCalibration( sensorCounter);
+
+}
 

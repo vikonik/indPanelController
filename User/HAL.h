@@ -30,7 +30,7 @@
 #define TRIGGER_SENSOR_LOCK (1<<5)
 
 
-#define POROG_ON_OFF 0x03C0
+#define POROG_ON_OFF 0x0800
 
 
 extern UART *uartPanel;
@@ -83,5 +83,5 @@ void ledTimerInit();
 void setHeat(void);
 uint8_t checkSensorLock(void);
 void delayMessureTimerInit();
-
+void sensorCalib(void);
 
